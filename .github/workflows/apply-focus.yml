@@ -1,0 +1,39 @@
+name: Apply Focus Mode
+
+# Manual one-shot: applies scripts/apply_focus.py to the repo, commits the
+# result to main, then starts the normal "Build IPA" workflow, which builds
+# the IPA and the rootful/rootless .deb files into a draft release.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Apply Focus Mode patch
+        run: python3 scripts/apply_focus.py
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A Opaline
+          git commit -m "Add Focus Mode: hide video thumbnails"
+          git push origin HEAD:main
+
+      # Pushes made with the workflow token do not start other workflows,
+      # so the build is started explicitly.
+      - name: Start the build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run build-release.yml --ref main
